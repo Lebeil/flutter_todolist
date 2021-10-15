@@ -74,13 +74,20 @@ class MyApp extends StatelessWidget {
           title: const Text('Firebase Todolist'),
           backgroundColor: Colors.blue,
         ),
-        body: Center(
-          child: ElevatedButton(
-            onPressed: () {
-              addDataToFirebase();
-            },
-            child: const Text('Ajouter des données'),
-          ),
+        body: Column(
+          children: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  addDataToFirebase();
+                },
+                child: const Text('Ajouter des données'),
+              ),
+            ),
+            Expanded(
+              child: ListSection(),
+            ),
+          ],
         ),
       ),
     );
@@ -96,5 +103,26 @@ class MyApp extends StatelessWidget {
     } catch (error) {
       print(error.toString());
     }
+  }
+}
+
+class ListSection extends StatelessWidget {
+  ListSection({Key? key}) : super(key: key);
+  final databaseReference = FirebaseFirestore.instance;
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder(
+      stream: databaseReference.collection('items').snapshots(),
+      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        if (!snapshot.hasData) return const Text('Loading...');
+        return ListView(
+          children: snapshot.data!.docs.map((document) {
+            return ListTile(
+              title: Text(document['text']),
+            );
+          }).toList(),
+        );
+      },
+    );
   }
 }
