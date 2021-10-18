@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 void main() => runApp(const InitializeApp());
 
@@ -76,14 +77,7 @@ class MyApp extends StatelessWidget {
         ),
         body: Column(
           children: [
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  addDataToFirebase();
-                },
-                child: const Text('Ajouter des données'),
-              ),
-            ),
+            FormSection(),
             Expanded(
               child: ListSection(),
             ),
@@ -117,12 +111,103 @@ class ListSection extends StatelessWidget {
         if (!snapshot.hasData) return const Text('Loading...');
         return ListView(
           children: snapshot.data!.docs.map((document) {
-            return ListTile(
-              title: Text(document['text']),
+            return CheckboxListTile(
+              title: Text(
+                document['text'],
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(document['time']),
+              value: document['done'],
+              activeColor: Colors.amber,
+              secondary: IconButton(
+                icon: Icon(
+                  Icons.delete,
+                  color: Colors.red.withOpacity(0.6),
+                ),
+                onPressed: () {
+                  deleteItem(document.id);
+                },
+              ),
+              onChanged: (bool? value) {
+                print(value);
+                updateItem(document.id, value!);
+              },
             );
           }).toList(),
         );
       },
     );
+  }
+
+  void deleteItem(String itemID) {
+    databaseReference.collection("items").doc(itemID).delete();
+  }
+
+  void updateItem(String itemID, bool itemDone) {
+    databaseReference
+        .collection("items")
+        .doc(itemID)
+        .update({"done": itemDone});
+  }
+}
+
+class FormSection extends StatelessWidget {
+  FormSection({Key? key}) : super(key: key);
+  final databaseReference = FirebaseFirestore.instance;
+  final myController = TextEditingController();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 10),
+      color: Colors.grey.withOpacity(0.1),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: myController,
+              decoration: const InputDecoration(
+                hintText: 'Entrez une nouvelle tâche',
+              ),
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.fromLTRB(20, 0, 0, 0),
+            width: 45,
+            height: 45,
+            decoration: BoxDecoration(
+              color: Colors.orange,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: IconButton(
+              icon: const Icon(
+                Icons.add,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                addItem();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void addItem() {
+    try {
+      var now = DateTime.now();
+      var hourAndMinutes = DateFormat('HH:mm');
+      databaseReference.collection("items").add({
+        "text": myController.text,
+        "time": hourAndMinutes.format(now),
+        "done": false,
+      }).then((value) {
+        print(value.id);
+        myController.clear(); //réinitialiser le champs, mettre vide
+      });
+    } catch (error) {
+      print(error.toString());
+    }
   }
 }
